@@ -199,7 +199,7 @@
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname === "";
     
     // Configura el dominio por defecto de tu backend en Render aquí si lo deseas
-    const defaultBackend = isLocal ? `${window.location.hostname || "127.0.0.1"}:8086` : "TU-NODO-DE-RENDER.onrender.com";
+    const defaultBackend = isLocal ? `${window.location.hostname || "127.0.0.1"}:8086` : "quantum-messenger-p1uy.onrender.com";
     const HOST = forcedHost || defaultBackend;
 
     const useSSL = window.location.protocol === "https:" || HOST.includes("onrender.com");
