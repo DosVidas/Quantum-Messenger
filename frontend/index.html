@@ -558,10 +558,10 @@
     const forcedHost = params.get('host');
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname === "";
     
-    const defaultBackend = isLocal ? `${window.location.hostname || "127.0.0.1"}:8086` : "quantum-messenger-p1uy.onrender.com";
+    const defaultBackend = isLocal ? `${window.location.hostname || "127.0.0.1"}:8086` : "api.quantummessenger.xyz";
     const HOST = forcedHost || defaultBackend;
 
-    const useSSL = window.location.protocol === "https:" || HOST.includes("onrender.com");
+    const useSSL = window.location.protocol === "https:" || HOST.includes("onrender.com") || HOST.includes("quantummessenger.xyz");
     const protoHttp = useSSL ? "https" : "http";
     const protoWs = useSSL ? "wss" : "ws";
 
