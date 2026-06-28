@@ -61,6 +61,42 @@
             flex-direction: column;
             padding: 20px;
             min-width: 0;
+            position: relative;
+        }
+
+        #menu-toggle {
+            display: none;
+            background: var(--accent);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 10px 15px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-bottom: 12px;
+            width: auto;
+            max-width: 160px;
+            text-transform: uppercase;
+            align-self: flex-start;
+            transition: all 0.15s ease;
+        }
+
+        #menu-toggle:hover {
+            background: var(--primary);
+            color: #000;
+        }
+
+        #sidebar-backdrop {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 850;
+            display: none;
+        }
+
+        #sidebar-backdrop.visible {
+            display: block;
         }
 
         .status-box {
@@ -471,7 +507,24 @@
 
         /* --- RESPONSIVE --- */
         @media (max-width: 700px) {
-            #sidebar { display: none; }
+            #sidebar {
+                position: fixed;
+                top: 0;
+                left: -300px;
+                width: 280px;
+                height: 100vh;
+                z-index: 900;
+                transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 5px 0 15px rgba(0, 0, 0, 0.8);
+                display: flex !important;
+                border-right: 1px solid var(--primary);
+            }
+            #sidebar.open {
+                left: 0;
+            }
+            #menu-toggle {
+                display: block;
+            }
             #emoji-picker { width: 100%; }
             #upload-progress { width: 100%; }
         }
@@ -524,6 +577,12 @@
 </div>
 
 <div id="main">
+    <!-- Capa de fondo para cerrar el menú lateral en móviles -->
+    <div id="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+    <!-- Botón para abrir menú lateral en móviles -->
+    <button id="menu-toggle" onclick="toggleSidebar(event)">☰ INFO NODO</button>
+
     <div id="chat-window"></div>
 
     <div id="input-wrapper">
@@ -1238,6 +1297,29 @@
             window.location.reload();
         }
     }
+
+    function toggleSidebar(ev) {
+        ev && ev.stopPropagation();
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        sidebar.classList.toggle('open');
+        backdrop.classList.toggle('visible', sidebar.classList.contains('open'));
+    }
+
+    function closeSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('visible');
+    }
+
+    // Cerrar sidebar al hacer click fuera del menú en pantallas móviles
+    document.addEventListener('click', (e) => {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target.id !== 'menu-toggle') {
+            closeSidebar();
+        }
+    });
 </script>
 
 </body>
