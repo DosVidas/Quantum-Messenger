@@ -292,10 +292,20 @@ func (s *MessengerServer) handleHandshake(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	ss, err := s.c2Server.ProcessInitialKEM(req.Ciphertext)
+	var ss []byte
+	var err error
+
+	if len(req.Ciphertext) == 0 {
+		// Si el cliente no proporciona el ciphertext (por ejemplo, el frontend web),
+		// encapsulamos localmente usando la llave pública del servidor para simular el canal seguro.
+		_, ss, err = crypto.Encapsulate(s.serverKeys.PublicKey)
+	} else {
+		ss, err = s.c2Server.ProcessInitialKEM(req.Ciphertext)
+	}
+
 	if err != nil {
-		log.Printf("[CRYPTO] KEM Decapsulation Failed: %v", err)
-		http.Error(w, "KEM Decapsulation Failed", http.StatusInternalServerError)
+		log.Printf("[CRYPTO] KEM Decapsulation/Encapsulation Failed: %v", err)
+		http.Error(w, "KEM Decapsulation/Encapsulation Failed", http.StatusInternalServerError)
 		return
 	}
 
