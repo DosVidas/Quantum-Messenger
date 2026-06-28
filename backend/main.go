@@ -7,10 +7,12 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"log"
 	"math/big"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -389,6 +391,75 @@ func (s *MessengerServer) handleGetMessages(w http.ResponseWriter, r *http.Reque
 	s.jsonResponse(w, s.store.Messages, http.StatusOK)
 }
 
+func (s *MessengerServer) handleUpload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Límite blando de 50MB
+	err := r.ParseMultipartForm(50 << 20)
+	if err != nil {
+		http.Error(w, "File too large or parsing failed", http.StatusBadRequest)
+		return
+	}
+
+	file, handler, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Failed to retrieve file from form", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	uploadDir := os.Getenv("UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = "./uploads"
+	}
+
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		http.Error(w, "Failed to create upload directory", http.StatusInternalServerError)
+		return
+	}
+
+	fileName := filepath.Base(handler.Filename)
+	filePath := filepath.Join(uploadDir, fileName)
+
+	dst, err := os.Create(filePath)
+	if err != nil {
+		http.Error(w, "Failed to write file to disk", http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, file); err != nil {
+		http.Error(w, "Failed to save file contents", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[UPLOAD] File uploaded successfully: %s", fileName)
+
+	s.jsonResponse(w, map[string]string{
+		"url":      "/files/" + fileName,
+		"filename": fileName,
+	}, http.StatusOK)
+}
+
+func (s *MessengerServer) handleServeFile(w http.ResponseWriter, r *http.Request) {
+	fileName := filepath.Base(r.URL.Path)
+	uploadDir := os.Getenv("UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = "./uploads"
+	}
+	filePath := filepath.Join(uploadDir, fileName)
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
+
+	http.ServeFile(w, r, filePath)
+}
+
 func main() {
 	server := NewMessengerServer("33LR-MESSENGER-ALPHA-v2")
 
@@ -404,6 +475,8 @@ func main() {
 
 	mux.HandleFunc("/api/messages/send", server.cors(server.handleSendMessage))
 	mux.HandleFunc("/api/messages/get", server.cors(server.handleGetMessages))
+	mux.HandleFunc("/api/upload", server.cors(server.handleUpload))
+	mux.HandleFunc("/files/", server.cors(server.handleServeFile))
 
 	port := os.Getenv("PORT")
 	if port == "" {

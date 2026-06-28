@@ -13,6 +13,8 @@
             --panel: #0d0d0d;
         }
 
+        * { box-sizing: border-box; }
+
         body {
             background: var(--bg);
             color: var(--text);
@@ -58,6 +60,7 @@
             display: flex;
             flex-direction: column;
             padding: 20px;
+            min-width: 0;
         }
 
         .status-box {
@@ -88,6 +91,8 @@
             margin-bottom: 15px;
             padding: 10px;
             border-left: 2px solid var(--accent);
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .message .meta {
@@ -98,15 +103,309 @@
 
         .message .text {
             font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* --- ÁREA DE INPUT MEJORADA --- */
+        #input-wrapper {
+            position: relative;
         }
 
         #input-area {
             display: flex;
-            gap: 10px;
+            gap: 6px;
+            align-items: stretch;
         }
 
-        input {
+        #msg-input {
             flex: 1;
+            background: #000;
+            border: 1px solid var(--accent);
+            color: var(--primary);
+            padding: 12px;
+            outline: none;
+            width: 100%;
+            margin: 0;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+
+        #msg-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 6px rgba(0, 255, 65, 0.4);
+        }
+
+        .icon-btn {
+            background: var(--accent);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 0 14px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-family: inherit;
+            min-width: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .icon-btn:hover {
+            background: var(--primary);
+            color: #000;
+        }
+
+        .icon-btn.active {
+            background: var(--primary);
+            color: #000;
+        }
+
+        #send-btn {
+            background: var(--accent);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 10px 20px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            font-family: inherit;
+            margin: 0;
+        }
+
+        #send-btn:hover {
+            background: var(--primary);
+            color: #000;
+        }
+
+        #send-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* --- SELECTOR DE EMOJIS --- */
+        #emoji-picker {
+            position: absolute;
+            bottom: 52px;
+            left: 0;
+            width: 340px;
+            max-width: 100%;
+            height: 320px;
+            background: var(--panel);
+            border: 1px solid var(--primary);
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.25);
+            display: none;
+            flex-direction: column;
+            z-index: 50;
+            font-family: inherit;
+        }
+
+        #emoji-picker.visible {
+            display: flex;
+        }
+
+        #emoji-search {
+            background: #000;
+            border: none;
+            border-bottom: 1px solid var(--accent);
+            color: var(--primary);
+            padding: 8px 10px;
+            font-family: inherit;
+            font-size: 0.8rem;
+            outline: none;
+        }
+
+        #emoji-search::placeholder {
+            color: #4a7a4a;
+        }
+
+        #emoji-categories {
+            display: flex;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--accent);
+            background: rgba(0,0,0,0.6);
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent) #000;
+        }
+
+        #emoji-categories::-webkit-scrollbar { height: 4px; }
+        #emoji-categories::-webkit-scrollbar-thumb { background: var(--accent); }
+        #emoji-categories::-webkit-scrollbar-track { background: #000; }
+
+        .emoji-cat-btn {
+            background: transparent;
+            border: none;
+            color: var(--text);
+            padding: 8px 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-family: inherit;
+            min-width: 38px;
+            opacity: 0.5;
+            transition: opacity 0.15s;
+        }
+
+        .emoji-cat-btn:hover { opacity: 1; }
+        .emoji-cat-btn.active {
+            opacity: 1;
+            border-bottom: 2px solid var(--primary);
+            background: rgba(0, 255, 65, 0.08);
+        }
+
+        #emoji-grid {
+            flex: 1;
+            overflow-y: auto;
+            padding: 6px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+            gap: 2px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent) #000;
+        }
+
+        #emoji-grid::-webkit-scrollbar { width: 6px; }
+        #emoji-grid::-webkit-scrollbar-thumb { background: var(--accent); }
+        #emoji-grid::-webkit-scrollbar-track { background: #000; }
+
+        .emoji-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            padding: 4px;
+            cursor: pointer;
+            border-radius: 2px;
+            background: transparent;
+            border: none;
+            font-family: inherit;
+            transition: background 0.1s;
+        }
+
+        .emoji-item:hover {
+            background: rgba(0, 255, 65, 0.15);
+            outline: 1px solid var(--primary);
+        }
+
+        #emoji-empty {
+            color: #555;
+            font-size: 0.75rem;
+            text-align: center;
+            padding: 20px;
+            grid-column: 1 / -1;
+        }
+
+        /* --- TARJETAS DE ARCHIVO EN EL CHAT --- */
+        .file-card {
+            border: 1px solid var(--accent);
+            background: rgba(0, 59, 0, 0.15);
+            padding: 10px 12px;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8rem;
+        }
+
+        .file-card .file-icon {
+            font-size: 1.6rem;
+            line-height: 1;
+        }
+
+        .file-card .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-card .file-name {
+            color: var(--primary);
+            word-break: break-all;
+            font-size: 0.85rem;
+        }
+
+        .file-card .file-meta {
+            color: #777;
+            font-size: 0.7rem;
+            margin-top: 2px;
+        }
+
+        .file-card .file-lock {
+            color: var(--primary);
+            font-size: 0.65rem;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        .file-download-btn {
+            background: var(--accent);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 6px 12px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            font-family: inherit;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .file-download-btn:hover {
+            background: var(--primary);
+            color: #000;
+        }
+
+        .file-download-btn:disabled {
+            opacity: 0.5;
+            cursor: wait;
+        }
+
+        /* --- BARRA DE PROGRESO DE SUBIDA --- */
+        #upload-progress {
+            position: absolute;
+            bottom: 52px;
+            right: 0;
+            width: 280px;
+            max-width: 100%;
+            background: var(--panel);
+            border: 1px solid var(--primary);
+            padding: 10px 12px;
+            font-size: 0.75rem;
+            color: var(--primary);
+            display: none;
+            z-index: 50;
+            box-shadow: 0 0 12px rgba(0, 255, 65, 0.2);
+        }
+
+        #upload-progress.visible { display: block; }
+
+        #upload-progress .up-label {
+            margin-bottom: 6px;
+            word-break: break-all;
+        }
+
+        #upload-progress .up-bar-bg {
+            width: 100%;
+            height: 6px;
+            background: #000;
+            border: 1px solid var(--accent);
+            overflow: hidden;
+        }
+
+        #upload-progress .up-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--primary);
+            box-shadow: 0 0 6px var(--primary);
+            transition: width 0.2s;
+        }
+
+        #upload-progress .up-stage {
+            margin-top: 4px;
+            color: #888;
+            font-size: 0.65rem;
+        }
+
+        input[type="text"], input:not([type]) {
             background: #000;
             border: 1px solid var(--accent);
             color: var(--primary);
@@ -115,6 +414,7 @@
             width: 100%;
             box-sizing: border-box;
             margin-bottom: 10px;
+            font-family: inherit;
         }
 
         button {
@@ -127,6 +427,7 @@
             font-weight: bold;
             width: 100%;
             margin-bottom: 10px;
+            font-family: inherit;
         }
 
         button:hover {
@@ -138,6 +439,13 @@
             color: var(--primary);
             text-shadow: 0 0 5px var(--primary);
             font-weight: bold;
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 700px) {
+            #sidebar { display: none; }
+            #emoji-picker { width: 100%; }
+            #upload-progress { width: 100%; }
         }
     </style>
 </head>
@@ -186,9 +494,30 @@
 
 <div id="main">
     <div id="chat-window"></div>
-    <div id="input-area">
-        <input type="text" id="msg-input" placeholder="Transmitiendo vía túnel 33LR..." autofocus>
-        <button onclick="sendMessage()" style="width: auto;">Enviar</button>
+
+    <div id="input-wrapper">
+        <!-- Selector de emojis -->
+        <div id="emoji-picker">
+            <input type="text" id="emoji-search" placeholder="Buscar emoji..." autocomplete="off">
+            <div id="emoji-categories"></div>
+            <div id="emoji-grid"></div>
+        </div>
+
+        <!-- Progreso de subida -->
+        <div id="upload-progress">
+            <div class="up-label" id="up-filename">Cifrando...</div>
+            <div class="up-bar-bg"><div class="up-bar-fill" id="up-bar"></div></div>
+            <div class="up-stage" id="up-stage">Iniciando...</div>
+        </div>
+
+        <div id="input-area">
+            <button class="icon-btn" id="emoji-btn" title="Emojis" onclick="toggleEmojiPicker(event)">😊</button>
+            <button class="icon-btn" id="file-btn" title="Adjuntar archivo cifrado (E2EE)" onclick="document.getElementById('file-input').click()">📎</button>
+            <input type="text" id="msg-input" placeholder="Transmitiendo vía túnel 33LR..." autofocus>
+            <button id="send-btn" onclick="sendMessage()">Enviar</button>
+        </div>
+
+        <input type="file" id="file-input" style="display:none" onchange="handleFileUpload(event)">
     </div>
 </div>
 
@@ -198,7 +527,6 @@
     const forcedHost = params.get('host');
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname === "";
     
-    // Configura el dominio por defecto de tu backend en Render aquí si lo deseas
     const defaultBackend = isLocal ? `${window.location.hostname || "127.0.0.1"}:8086` : "quantum-messenger-p1uy.onrender.com";
     const HOST = forcedHost || defaultBackend;
 
@@ -208,6 +536,8 @@
 
     const API_BASE = HOST.startsWith("http") ? `${HOST}/api` : `${protoHttp}://${HOST}/api`;
     const WS_URL = HOST.startsWith("ws") ? `${HOST}/ws` : `${protoWs}://${HOST}/ws`;
+    // Raíz para construir URLs absolutas de archivos (sin /api)
+    const HOST_ROOT = HOST.startsWith("http") ? HOST : `${protoHttp}://${HOST}`;
 
     document.getElementById('node-ip-hint').innerText = HOST.split(':')[0];
     console.log("Configuración de red:", { HOST, API_BASE, WS_URL });
@@ -389,15 +719,110 @@
         ws.onclose = () => setTimeout(connectWS, 3000);
     }
 
+    // --- FORMATO DE MENSAJES DE ARCHIVO ---
+    // Mensaje de texto plano: texto normal.
+    // Mensaje de archivo:    [FILE]{json}[/FILE]
+    //   json = { u: url, k: keyHex, v: ivHex, n: name, s: size, t: mime }
+    const FILE_TAG_RE = /^\[FILE\](.*)\[\/FILE\]$/s;
+
+    function isFileMessage(text) {
+        return typeof text === 'string' && FILE_TAG_RE.test(text);
+    }
+
+    function parseFileMessage(text) {
+        const m = text.match(FILE_TAG_RE);
+        if (!m) return null;
+        try { return JSON.parse(m[1]); } catch (e) { return null; }
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({
+            '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+        }[c]));
+    }
+
+    function formatBytes(b) {
+        if (!b && b !== 0) return '?';
+        const u = ['B','KB','MB','GB','TB'];
+        let i = 0, v = b;
+        while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+        return v.toFixed(v < 10 && i > 0 ? 1 : 0) + ' ' + u[i];
+    }
+
+    function fileIconFor(name, mime) {
+        const ext = (name || '').split('.').pop().toLowerCase();
+        if ((mime || '').startsWith('image/')) return '🖼️';
+        if ((mime || '').startsWith('video/')) return '🎬';
+        if ((mime || '').startsWith('audio/')) return '🎵';
+        if (['pdf'].includes(ext)) return '📄';
+        if (['zip','rar','7z','tar','gz'].includes(ext)) return '🗜️';
+        if (['js','ts','py','go','java','c','cpp','h','html','css','json','xml','yml','yaml','sh'].includes(ext)) return '📜';
+        if (['doc','docx'].includes(ext)) return '📝';
+        if (['xls','xlsx','csv'].includes(ext)) return '📊';
+        if (['ppt','pptx'].includes(ext)) return '📽️';
+        return '📦';
+    }
+
     function displayMessage(m) {
         const win = document.getElementById('chat-window');
         const msgDiv = document.createElement('div');
         msgDiv.className = 'message';
-        msgDiv.innerHTML = `
-            <div class="meta">[${m.timestamp}] ${m.from} <span style="font-size:0.5rem; opacity:0.3;">${m.publicKey.substring(0,8)}...</span></div>
-            <div class="text">${m.text}</div>
-            ${m.wireData ? `<div style="font-size: 0.6rem; color: #444; margin-top:5px; font-family: monospace;">WIRE: ${m.wireData}</div>` : ''}
-        `;
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const pkShort = m.publicKey ? `${escapeHtml(m.publicKey.substring(0,8))}...` : '';
+        meta.innerHTML = `[${escapeHtml(m.timestamp)}] ${escapeHtml(m.from)} <span style="font-size:0.5rem; opacity:0.3;">${pkShort}</span>`;
+        msgDiv.appendChild(meta);
+
+        const text = (m.text != null) ? String(m.text) : '';
+
+        if (isFileMessage(text)) {
+            const f = parseFileMessage(text);
+            if (f) {
+                const card = document.createElement('div');
+                card.className = 'file-card';
+
+                const icon = document.createElement('div');
+                icon.className = 'file-icon';
+                icon.innerText = fileIconFor(f.n, f.t);
+
+                const info = document.createElement('div');
+                info.className = 'file-info';
+                info.innerHTML = `
+                    <div class="file-name">${escapeHtml(f.n || 'archivo')}</div>
+                    <div class="file-meta">${formatBytes(f.s)} · ${(f.t || 'binario')}</div>
+                    <div class="file-lock">🔒 Cifrado AES-GCM · clave en mensaje</div>
+                `;
+
+                const dl = document.createElement('button');
+                dl.className = 'file-download-btn';
+                dl.innerText = 'Descargar';
+                dl.onclick = () => decryptAndDownload(f, dl);
+
+                card.appendChild(icon);
+                card.appendChild(info);
+                card.appendChild(dl);
+                msgDiv.appendChild(card);
+            } else {
+                const t = document.createElement('div');
+                t.className = 'text';
+                t.innerText = '[archivo corrupto]';
+                msgDiv.appendChild(t);
+            }
+        } else {
+            const t = document.createElement('div');
+            t.className = 'text';
+            t.innerText = text;
+            msgDiv.appendChild(t);
+        }
+
+        if (m.wireData) {
+            const wire = document.createElement('div');
+            wire.style.cssText = 'font-size:0.6rem;color:#444;margin-top:5px;font-family:monospace;word-break:break-all;';
+            wire.innerText = 'WIRE: ' + m.wireData;
+            msgDiv.appendChild(wire);
+        }
+
         win.appendChild(msgDiv);
         win.scrollTop = win.scrollHeight;
     }
@@ -416,6 +841,7 @@
         const text = input.value;
         if (!text) return;
         input.value = '';
+        closeEmojiPicker();
         await fetch(`${API_BASE}/messages/send`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -428,6 +854,349 @@
     });
 
     setInterval(updateStatus, 15000);
+
+    // ============================================================
+    //  SELECTOR DE EMOJIS (nativo, sin librerías externas)
+    // ============================================================
+
+    const EMOJI_CATEGORIES = [
+        { id: 'smileys', icon: '😀', name: 'Caras', emojis: '😀 😃 😄 😁 😆 😅 😂 🤣 😊 😇 🙂 🙃 😉 😌 😍 🥰 😘 😗 😋 😛 😝 🤪 🤨 🧐 🤓 😎 🥸 🤩 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😖 😫 😩 🥺 😢 😭 😤 😠 😡 🤬 🤯 😳 🥵 🥶 😱 😨 😰 😥 😓 🤗 🤔 🤭 🤫 🤥 😶 😐 😑 😬 🙄 😯 😦 😧 😮 😲 🥱 😴 🤤 😪 😵 🤐 🥴 🤢 🤮 🤧 😷 🤒 🤕 🤠 🥸 🤧 🥴' },
+        { id: 'gestures', icon: '👋', name: 'Gestos', emojis: '👋 🤚 🖐 ✋ 🖖 👌 🤌 🤏 ✌ 🤞 🤟 🤘 🤙 👈 👉 👆 👇 ☝ ✍ 👏 🙌 👐 🤲 🤝 🙏 👍 👎 ✊ 👊 🤛 🤜 👶 🧒 👦 👧 🧑 👱 👨 🧔 👨🦰 👨🦱 👨🦳 👨🦲 👩 👩🦰 🧑🦰 👩🦱 🧑🦱 👩🦳 🧑🦳 👩🦲 🧑🦲 👱♀ 👱♂ 🧓 👴 👵' },
+        { id: 'hearts', icon: '❤️', name: 'Símbolos', emojis: '❤ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣ 💕 💞 💓 💗 💖 💘 💝 💟 ☮ ✝ ☪ 🕉 ☸ ✡ 🔯 ♈ ♉ ♊ ♋ 🟡 🟢 🔵 🟣 ⚫ ⚪ 🟤 🔀 🔁 🔂 ▶ ⏩ ⏭ ⏯ ◀ ⏪ ⏮ 🔼 ⏫ 🔽 ⏬ ⏸ ⏹ ⏺ ⏏ 🎦 🔅 🔆 📶 📳 📴 ♻ ⚠ 🚸 ⚜ ⚱ ⚛ ⚡ ☄ ✨ 🌟 ⭐ 💥 🔥 🌪 🌈 ☀ 🌤 ⛅ 🌥 ☁ 🌦 🌧 ⛈ 🌩 🌨 ❄ ⛄ 🌬 💨 💧 ✅ ❌ ❎ ✔ ✖ ➕ ➖ ➗ ➰ ➿ 〽 ✳ ✴ ❇ ‼ ⁉ ❓ ❔ ❕ ❗ 〰 © ® ™ 🔠 🔡 🔢 🔣 🔤' },
+        { id: 'animals', icon: '🐶', name: 'Animales', emojis: '🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🦅 🦉 🦇 🐺 🐗 🐴 🦄 🐝 🐛 🦋 🐌 🐞 🐜 🦟 🦗 🕷 🐢 🐍 🦎 🦖 🐙 🦑 🦐 🦞 🦀 🐠 🐟 🐬 🐳 🐋 🦈 🐊 🐅 🐆 🦓 🦍 🦧 🐘 🦛 🦏 🐪 🐫 🦒 🐃 🐂 🐄 🐎 🐖 🐏 🐑 🦙 🐐 🦌 🐕 🐩 🦮 🐈 🐓 🦃 🦚 🦜 🦢 🦩 🕊 🐇 🦝 🦨 🦡 🦦 🦥 🐁 🐀 🐿 🦔' },
+        { id: 'food', icon: '🍔', name: 'Comida', emojis: '🍎 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🍒 🍑 🥭 🍍 🥥 🥝 🍅 🍆 🥑 🥦 🥬 🥒 🌶 🌽 🥕 🧄 🧅 🥔 🍠 🥐 🍞 🥖 🥨 🧀 🥚 🍳 🧈 🥞 🧇 🥓 🥩 🍗 🍖 🦴 🌭 🍔 🍟 🍕 🥪 🥙 🧆 🌮 🌯 🥗 🥘 🍝 🍜 🍲 🍛 🍣 🍱 🥟 🦪 🍤 🍙 🍚 🍘 🍥 🥠 🍮 🍰 🎂 🍭 🍬 🍫 🍿 🍩 🍪 🌰 🥜 🍯 🥛 🍼 ☕ 🍵 🍶 🍾 🍷 🍸 🍹 🍺 🥂 🥃 🥤 🧃 🧉 🧊 🥢 🍽 🍴 🥄 🔪 🏺' },
+        { id: 'activity', icon: '⚽', name: 'Actividad', emojis: '⚽ 🏀 🏈 ⚾ 🥎 🎾 🏐 🏉 🥏 🎱 🪀 🏓 🏸 🏒 🏑 🥍 🏏 ⛳ 🥅 🎯 🎮 🕹 🎲 🎰 🧩 🎨 🎭 🎪 🎬 🎤 🎧 🎼 🎹 🥁 🎸 🎺 🎻 🪕 🎳 🏷 🎫 🎟 🎖 🏆 🥇 🥈 🥉 🏅 🎗 🤹 🖌 🖍 📝 ✏ ✒ 🖋 🖊 📏 📐 ✂ 📌 📍 📎 🖇 🗒 📓 📔 📒 📕 📗 📘 📙 📚 📖 🔖' },
+        { id: 'travel', icon: '🚗', name: 'Viajes', emojis: '🚗 🚕 🚙 🚌 🚎 🏎 🚓 🚑 🚒 🚐 🚚 🚛 🚜 🛵 🏍 🚲 🛴 🚨 🚔 🚍 🚘 🚖 🚡 🚠 🚟 🚃 🚋 🚞 🚝 🚄 🚅 🚈 🚂 🚆 🚇 🚊 🚉 ✈ 🛫 🛬 🛩 💺 🛰 🚀 🛸 🚁 🛶 ⛵ 🚤 🛥 🛳 ⛴ 🚢 ⚓ ⛽ 🚧 🚦 🚥 🚏 🗺 🗿 🗽 🗼 🏰 🏯 🏟 🎡 🎢 🎠 ⛲ ⛱ 🏖 🏝 🏜 🌋 ⛰ 🏔 🗻 🏕 ⛺ 🏠 🏡 🏘 🏚 🏗 🏭 🏢 🏬 🏣 🏤 🏥 🏦 🏨 🏪 🏫 🏩 💒 🏛 ⛪ 🕌 🕍 🕋 ⛩' },
+        { id: 'objects', icon: '💡', name: 'Objetos', emojis: '⌚ 📱 💻 ⌨ 🖥 🖨 🖱 🖲 💾 💿 📀 📷 📸 🎥 📹 🎞 📽 🎬 📺 # 📞 📼 🔍 🔎 💡 🕯 🪔 🧯 💸 💵 💴 💶 💷 💰 💳 💎 ⚖ 🧰 🔧 🔨 ⚒ 🛠 ⛏ 🔩 ⚙ 🧱 ⛓ 🧲 🔫 💣 🧨 🪓 🔪 🗡 ⚔ 🛡 🚬 ⚰ ⚱ 🏺 🔮 📿 🧿 💈 ⚗ 🔭 🔬 🕳 🩹 🩺 💊 💉 🩸 🧬 🦠 🧫 🧪 🌡 🧹 🧺 🧻 🚽 🚰 🚿 🛁 🛀 🧼 🪒 🧽 🧴 🛎 🔑 🗝 🚪 🪑 🛋 🛏 🛌 🧸 🖼 🛍 🛒 🎁 🎈 🎏 🎀 🎊 🎉 🧧 ✉ 📩 📨 📧 💌 📮 📪 📫 📬 📭 📦 📯 📥 📤 📜 📃 📑 📊 📈 📉 🗑 📇 🗃 🗳 🗄 📋 📁 📂 🗂 🗞 📰 📓 📔 📒 📕 📗 📘 📙 📚 📖 🔖 🧷 🔗 📎 🖇 🧮 📌 📍 ✂ 🖊 🖋 ✒ 🖌 🖍 📝 ✏ 🔏 🔐 🔒 🔓' }
+    ];
+
+    // Construye un índice plano para la búsqueda
+    const EMOJI_FLAT = [];
+    EMOJI_CATEGORIES.forEach(c => {
+        c.emojis.split(/\s+/).filter(Boolean).forEach(e => EMOJI_FLAT.push({ e, cat: c.id }));
+    });
+
+    let currentCategory = EMOJI_CATEGORIES[0].id;
+
+    function buildEmojiCategories() {
+        const wrap = document.getElementById('emoji-categories');
+        wrap.innerHTML = '';
+        EMOJI_CATEGORIES.forEach(c => {
+            const b = document.createElement('button');
+            b.className = 'emoji-cat-btn' + (c.id === currentCategory ? ' active' : '');
+            b.innerText = c.icon;
+            b.title = c.name;
+            b.dataset.cat = c.id;
+            b.onclick = (ev) => {
+                ev.stopPropagation();
+                currentCategory = c.id;
+                document.querySelectorAll('.emoji-cat-btn').forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                document.getElementById('emoji-search').value = '';
+                renderEmojiGrid();
+            };
+            wrap.appendChild(b);
+        });
+    }
+
+    function renderEmojiGrid(query) {
+        const grid = document.getElementById('emoji-grid');
+        grid.innerHTML = '';
+        const q = (query || '').trim().toLowerCase();
+        let list;
+        if (q) {
+            // Búsqueda: muestra todos los que coincidan (filtro simple por categoría activa primero, luego todo)
+            list = EMOJI_FLAT
+                .filter(it => it.cat === currentCategory)
+                .map(it => it.e);
+            // Si la categoría activa no tiene resultados, busca en todo
+            if (list.length === 0) list = EMOJI_FLAT.map(it => it.e);
+        } else {
+            list = EMOJI_CATEGORIES.find(c => c.id === currentCategory).emojis.split(/\s+/).filter(Boolean);
+        }
+        if (list.length === 0) {
+            const empty = document.createElement('div');
+            empty.id = 'emoji-empty';
+            empty.innerText = 'Sin resultados';
+            grid.appendChild(empty);
+            return;
+        }
+        list.forEach(e => {
+            const b = document.createElement('button');
+            b.className = 'emoji-item';
+            b.innerText = e;
+            b.onclick = (ev) => {
+                ev.stopPropagation();
+                insertEmoji(e);
+            };
+            grid.appendChild(b);
+        });
+    }
+
+    function insertEmoji(e) {
+        const input = document.getElementById('msg-input');
+        const start = input.selectionStart ?? input.value.length;
+        const end = input.selectionEnd ?? input.value.length;
+        const newVal = input.value.slice(0, start) + e + input.value.slice(end);
+        input.value = newVal;
+        const pos = start + e.length;
+        input.focus();
+        input.setSelectionRange(pos, pos);
+    }
+
+    function toggleEmojiPicker(ev) {
+        ev && ev.stopPropagation();
+        const p = document.getElementById('emoji-picker');
+        const btn = document.getElementById('emoji-btn');
+        p.classList.toggle('visible');
+        btn.classList.toggle('active', p.classList.contains('visible'));
+        if (p.classList.contains('visible')) {
+            document.getElementById('emoji-search').focus();
+        }
+    }
+
+    function closeEmojiPicker() {
+        const p = document.getElementById('emoji-picker');
+        const btn = document.getElementById('emoji-btn');
+        p.classList.remove('visible');
+        btn.classList.remove('active');
+    }
+
+    document.getElementById('emoji-search').addEventListener('input', (e) => {
+        renderEmojiGrid(e.target.value);
+    });
+
+    document.getElementById('emoji-search').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            // Insertar el primer emoji visible
+            const first = document.querySelector('#emoji-grid .emoji-item');
+            if (first) insertEmoji(first.innerText);
+            e.preventDefault();
+        }
+    });
+
+    // Cerrar picker al hacer click fuera o al presionar Escape
+    document.addEventListener('click', (e) => {
+        const p = document.getElementById('emoji-picker');
+        if (!p.classList.contains('visible')) return;
+        if (p.contains(e.target)) return;
+        if (e.target.id === 'emoji-btn' || e.target.closest('#emoji-btn')) return;
+        closeEmojiPicker();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeEmojiPicker();
+    });
+
+    // Inicializar picker (categorías + grid)
+    buildEmojiCategories();
+    renderEmojiGrid();
+
+    // ============================================================
+    //  CARGA DE ARCHIVOS CON CIFRADO E2EE (AES-GCM 256)
+    // ============================================================
+    //
+    //  Flujo:
+    //   1. Generar clave AES-GCM aleatoria de 256 bits + IV de 12 bytes.
+    //   2. Cifrar el archivo en el navegador.
+    //   3. Subir el binario cifrado a POST /api/upload (multipart "file").
+    //   4. El backend guarda el archivo y responde JSON: { url: "/files/<nombre>", filename: "<nombre>" }.
+    //   5. Enviar como mensaje de chat: [FILE]{u,k,v,n,s,t}[/FILE]
+    //      donde 'k' y 'v' son la clave de descifrado (viajan dentro del chat E2E).
+    //   6. Al descargar, el receptor fetch→AES-GCM decrypt→Blob→download.
+
+    const UPLOAD_MAX_BYTES = 50 * 1024 * 1024; // 50 MB de límite blando
+
+    function showUploadProgress(filename) {
+        const box = document.getElementById('upload-progress');
+        document.getElementById('up-filename').innerText = filename;
+        document.getElementById('up-bar').style.width = '0%';
+        document.getElementById('up-stage').innerText = 'Iniciando...';
+        box.classList.add('visible');
+    }
+    function hideUploadProgress() {
+        document.getElementById('upload-progress').classList.remove('visible');
+    }
+    function setUploadProgress(pct, stage) {
+        document.getElementById('up-bar').style.width = Math.max(0, Math.min(100, pct)) + '%';
+        if (stage) document.getElementById('up-stage').innerText = stage;
+    }
+
+    async function encryptFile(file) {
+        // 1. Clave AES-GCM 256 aleatoria
+        const aesKey = await window.crypto.subtle.generateKey(
+            { name: 'AES-GCM', length: 256 },
+            true,
+            ['encrypt', 'decrypt']
+        );
+        // 2. IV de 12 bytes
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        // 3. Leer archivo
+        const plainBuf = await file.arrayBuffer();
+        // 4. Cifrar
+        const cipherBuf = await window.crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv: iv },
+            aesKey,
+            plainBuf
+        );
+        // 5. Exportar clave en raw → hex para enviarla dentro del mensaje
+        const rawKey = await window.crypto.subtle.exportKey('raw', aesKey);
+        const keyHex = await bufToHex(rawKey);
+        const ivHex = await bufToHex(iv);
+        return {
+            cipher: new Uint8Array(cipherBuf),
+            keyHex,
+            ivHex
+        };
+    }
+
+    function absoluteUrl(u) {
+        if (!u) return u;
+        if (/^https?:\/\//i.test(u)) return u;
+        if (u.startsWith('/')) return HOST_ROOT + u;
+        return HOST_ROOT + '/' + u;
+    }
+
+    async function uploadEncryptedFile(cipherBytes, originalName, onProgress) {
+        // Nombre aleatorio para que el archivo en disco no revele el original.
+        const ext = (originalName.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 6);
+        const rand = Array.from(window.crypto.getRandomValues(new Uint8Array(8)))
+            .map(b => b.toString(16).padStart(2, '0')).join('');
+        const storedName = `${Date.now()}_${rand}.${ext || 'bin'}`;
+
+        const blob = new Blob([cipherBytes], { type: 'application/octet-stream' });
+        const fd = new FormData();
+        fd.append('file', blob, storedName);
+
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `${API_BASE}/upload`, true);
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable && onProgress) {
+                    onProgress((e.loaded / e.total) * 100);
+                }
+            };
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        resolve(data);
+                    } catch (e) {
+                        reject(new Error('Respuesta inválida del servidor'));
+                    }
+                } else {
+                    reject(new Error(`HTTP ${xhr.status}: ${xhr.responseText}`));
+                }
+            };
+            xhr.onerror = () => reject(new Error('Error de red al subir el archivo'));
+            xhr.send(fd);
+        });
+    }
+
+    async function handleFileUpload(event) {
+        const fileInput = event.target;
+        const file = fileInput.files && fileInput.files[0];
+        fileInput.value = ''; // reset para permitir re-seleccionar el mismo
+        if (!file) return;
+
+        if (file.size > UPLOAD_MAX_BYTES) {
+            alert(`Archivo demasiado grande. Máximo: ${formatBytes(UPLOAD_MAX_BYTES)}`);
+            return;
+        }
+
+        const sendBtn = document.getElementById('send-btn');
+        sendBtn.disabled = true;
+        showUploadProgress(file.name);
+
+        try {
+            setUploadProgress(5, 'Cifrando AES-GCM 256...');
+            const { cipher, keyHex, ivHex } = await encryptFile(file);
+
+            setUploadProgress(15, 'Subiendo archivo cifrado...');
+            const resp = await uploadEncryptedFile(cipher, file.name, (pct) => {
+                // 15% → 90% corresponde a la subida
+                setUploadProgress(15 + (pct * 0.75), 'Subiendo archivo cifrado...');
+            });
+
+            setUploadProgress(95, 'Enviando mensaje E2E...');
+            const fileUrl = absoluteUrl(resp.url || resp.filename || resp.path);
+            const payload = {
+                u: fileUrl,
+                k: keyHex,
+                v: ivHex,
+                n: file.name,
+                s: file.size,
+                t: file.type || 'application/octet-stream'
+            };
+            const text = `[FILE]${JSON.stringify(payload)}[/FILE]`;
+
+            const r = await fetch(`${API_BASE}/messages/send`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ user: myPKHex, text: text })
+            });
+            if (!r.ok) throw new Error('No se pudo enviar el mensaje');
+
+            setUploadProgress(100, '¡Enviado!');
+            setTimeout(hideUploadProgress, 800);
+        } catch (e) {
+            console.error('[upload]', e);
+            hideUploadProgress();
+            alert('Error al subir el archivo: ' + e.message);
+        } finally {
+            sendBtn.disabled = false;
+        }
+    }
+
+    async function decryptAndDownload(f, btn) {
+        if (!f || !f.u || !f.k || !f.v) {
+            alert('Datos de archivo incompletos.');
+            return;
+        }
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = 'Descargando...';
+        try {
+            // 1. Fetch del binario cifrado
+            const resp = await fetch(f.u);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const cipherBuf = await resp.arrayBuffer();
+
+            btn.innerText = 'Descifrando...';
+            // 2. Importar clave AES-GCM
+            const keyRaw = hexToBuf(f.k);
+            const aesKey = await window.crypto.subtle.importKey(
+                'raw',
+                keyRaw,
+                { name: 'AES-GCM' },
+                false,
+                ['decrypt']
+            );
+            const iv = hexToBuf(f.v);
+            // 3. Descifrar
+            const plainBuf = await window.crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: iv },
+                aesKey,
+                cipherBuf
+            );
+            // 4. Descargar
+            const blob = new Blob([plainBuf], { type: f.t || 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = f.n || 'archivo.descargado';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 4000);
+        } catch (e) {
+            console.error('[download]', e);
+            alert('No se pudo descifrar el archivo: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = originalText;
+        }
+    }
 </script>
 
 </body>
