@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum-Messenger | 33LR Protocol</title>
+    <style>
+        :root {
+            --bg: #050505;
+            --primary: #00ff41;
+            --accent: #003b00;
+            --text: #d1d1d1;
+            --panel: #0d0d0d;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #login-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .auth-box {
+            border: 1px solid var(--primary);
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            background: var(--panel);
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+        }
+
+        #sidebar {
+            width: 300px;
+            background: var(--panel);
+            border-right: 1px solid var(--accent);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .status-box {
+            border: 1px solid var(--accent);
+            padding: 10px;
+            font-size: 0.8rem;
+            margin-bottom: 20px;
+            background: rgba(0, 59, 0, 0.1);
+        }
+
+        .status-box h3 {
+            margin: 0 0 10px 0;
+            color: var(--primary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        #chat-window {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid var(--accent);
+            padding: 15px;
+            margin-bottom: 20px;
+            background: rgba(0,0,0,0.5);
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-left: 2px solid var(--accent);
+        }
+
+        .message .meta {
+            font-size: 0.7rem;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .message .text {
+            font-size: 0.9rem;
+        }
+
+        #input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            background: #000;
+            border: 1px solid var(--accent);
+            color: var(--primary);
+            padding: 12px;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background: var(--accent);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 10px 20px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background: var(--primary);
+            color: #000;
+        }
+
+        .glitch {
+            color: var(--primary);
+            text-shadow: 0 0 5px var(--primary);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div id="login-overlay">
+    <div class="auth-box">
+        <h2 class="glitch" style="text-align: center;">TERMINAL ACCESO 33LR</h2>
+        
+        <div id="auth-initial">
+            <button onclick="showRegister()">GENERAR NUEVA IDENTIDAD</button>
+            <button onclick="tryStoredLogin()">DESBLOQUEAR EXISTENTE</button>
+        </div>
+
+        <div id="auth-register" style="display: none;">
+            <p style="font-size: 0.7rem; color: #888;">Introduce un alias para tu llave pública:</p>
+            <input type="text" id="reg-alias" placeholder="ALIAS_OPERADOR">
+            <button onclick="generateAndRegister()">CREAR IDENTIDAD</button>
+            <button onclick="showInitial()" style="border-color: #444; color: #444;">VOLVER</button>
+        </div>
+
+        <div id="auth-status" style="font-size: 0.8rem; margin-top: 10px; color: var(--primary); text-align: center;"></div>
+        
+        <div style="margin-top: 20px; font-size: 0.6rem; color: #444; text-align: center;">
+            Nodo detectado en: <span id="node-ip-hint">detectando...</span>
+        </div>
+    </div>
+</div>
+
+<div id="sidebar">
+    <h2 class="glitch">33LR NODE</h2>
+    <div id="status-container" class="status-box">
+        <h3>System Status</h3>
+        <div id="status-info">Iniciando...</div>
+    </div>
+    <div class="status-box">
+        <h3>Active DGA</h3>
+        <div id="dga-domain" style="word-break: break-all; color: #888;">...</div>
+    </div>
+    <div id="user-info" class="status-box">
+        <h3>Identity</h3>
+        <div id="active-alias" style="color: var(--primary);">OFFLINE</div>
+        <div id="active-pk" style="font-size: 0.5rem; word-break: break-all; color: #555;">...</div>
+    </div>
+</div>
+
+<div id="main">
+    <div id="chat-window"></div>
+    <div id="input-area">
+        <input type="text" id="msg-input" placeholder="Transmitiendo vía túnel 33LR..." autofocus>
+        <button onclick="sendMessage()" style="width: auto;">Enviar</button>
+    </div>
+</div>
+
+<script>
+    // Configuración dinámica de IP
+    const params = new URLSearchParams(window.location.search);
+    const forcedHost = params.get('host');
+    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname === "";
+    
+    // Configura el dominio por defecto de tu backend en Render aquí si lo deseas
+    const defaultBackend = isLocal ? `${window.location.hostname || "127.0.0.1"}:8086` : "TU-NODO-DE-RENDER.onrender.com";
+    const HOST = forcedHost || defaultBackend;
+
+    const useSSL = window.location.protocol === "https:" || HOST.includes("onrender.com");
+    const protoHttp = useSSL ? "https" : "http";
+    const protoWs = useSSL ? "wss" : "ws";
+
+    const API_BASE = HOST.startsWith("http") ? `${HOST}/api` : `${protoHttp}://${HOST}/api`;
+    const WS_URL = HOST.startsWith("ws") ? `${HOST}/ws` : `${protoWs}://${HOST}/ws`;
+
+    document.getElementById('node-ip-hint').innerText = HOST.split(':')[0];
+    console.log("Configuración de red:", { HOST, API_BASE, WS_URL });
+
+    let myKeys = null; 
+    let myAlias = "";
+    let myPKHex = "";
+    let ws;
+
+    // --- CRIPTOGRAFÍA ECDSA (P-256) ---
+
+    async function bufToHex(buffer) {
+        return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function hexToBuf(hexString) {
+        return new Uint8Array(hexString.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    }
+
+    async function generateIdentity() {
+        const keys = await window.crypto.subtle.generateKey(
+            { name: "ECDSA", namedCurve: "P-256" },
+            true,
+            ["sign", "verify"]
+        );
+        const pkExported = await window.crypto.subtle.exportKey("spki", keys.publicKey);
+        const pkHex = await bufToHex(pkExported);
+        const skExported = await window.crypto.subtle.exportKey("jwk", keys.privateKey);
+        localStorage.setItem("33lr_sk", JSON.stringify(skExported));
+        localStorage.setItem("33lr_pk", pkHex);
+        return { keys, pkHex };
+    }
+
+    async function loadIdentity() {
+        const pkHex = localStorage.getItem("33lr_pk");
+        const skJWK = localStorage.getItem("33lr_sk");
+        if (!pkHex || !skJWK) return null;
+        try {
+            const privateKey = await window.crypto.subtle.importKey(
+                "jwk", JSON.parse(skJWK),
+                { name: "ECDSA", namedCurve: "P-256" },
+                true, ["sign"]
+            );
+            return { privateKey, pkHex };
+        } catch(e) { return null; }
+    }
+
+    // --- FLUJO AUTH ---
+
+    function showRegister() {
+        document.getElementById('auth-initial').style.display = 'none';
+        document.getElementById('auth-register').style.display = 'block';
+    }
+
+    function showInitial() {
+        document.getElementById('auth-initial').style.display = 'block';
+        document.getElementById('auth-register').style.display = 'none';
+    }
+
+    function setStatus(txt) {
+        document.getElementById('auth-status').innerText = txt;
+        console.log("[STATUS]", txt);
+    }
+
+    async function generateAndRegister() {
+        const alias = document.getElementById('reg-alias').value;
+        if (!alias) return alert("Introduce un alias");
+
+        try {
+            setStatus("Generando llaves P-256...");
+            const { pkHex } = await generateIdentity();
+            
+            setStatus("Registrando en el nodo...");
+            const res = await fetch(`${API_BASE}/auth/register`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ publicKey: pkHex, alias: alias })
+            });
+            
+            if (res.ok) {
+                localStorage.setItem("33lr_alias", alias);
+                await tryStoredLogin();
+            } else {
+                setStatus("Error en registro: " + (await res.text()));
+            }
+        } catch (e) {
+            setStatus("Error de conexión: " + e.message);
+        }
+    }
+
+    async function tryStoredLogin() {
+        try {
+            setStatus("Cargando identidad...");
+            const identity = await loadIdentity();
+            if (!identity) {
+                setStatus("No hay identidad guardada.");
+                return showInitial();
+            }
+
+            myPKHex = identity.pkHex;
+            myKeys = identity;
+            myAlias = localStorage.getItem("33lr_alias") || "OPERADOR";
+
+            setStatus("Obteniendo reto...");
+            const chalRes = await fetch(`${API_BASE}/auth/challenge`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ publicKey: myPKHex })
+            });
+            
+            if (!chalRes.ok) throw new Error("Servidor no responde al reto");
+            const { nonce } = await chalRes.json();
+
+            setStatus("Firmando...");
+            const signature = await window.crypto.subtle.sign(
+                { name: "ECDSA", hash: { name: "SHA-256" } },
+                myKeys.privateKey,
+                new TextEncoder().encode(nonce)
+            );
+            const sigHex = await bufToHex(signature);
+
+            setStatus("Verificando...");
+            const verRes = await fetch(`${API_BASE}/auth/verify`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ publicKey: myPKHex, signature: sigHex })
+            });
+
+            if (verRes.ok) {
+                setStatus("¡ACCESO CONCEDIDO!");
+                document.getElementById('login-overlay').style.display = 'none';
+                startApp();
+            } else {
+                setStatus("Firma rechazada por el nodo.");
+            }
+        } catch (e) {
+            setStatus("Error de conexión: " + e.message);
+        }
+    }
+
+    // --- APP CORE ---
+
+    async function startApp() {
+        document.getElementById('active-alias').innerText = myAlias;
+        document.getElementById('active-pk').innerText = myPKHex;
+        
+        await performHandshake();
+        await fetchMessages();
+        connectWS();
+        updateStatus();
+    }
+
+    async function updateStatus() {
+        try {
+            const res = await fetch(`${API_BASE}/status`);
+            const data = await res.json();
+            document.getElementById('status-info').innerHTML = `
+                PROTO: ${data.protocol}<br>
+                LUNA: ${data.luna_phase}<br>
+                ENC: ${data.encryption}
+            `;
+            document.getElementById('dga-domain').innerText = data.active_node;
+        } catch (e) {}
+    }
+
+    async function performHandshake() {
+        try {
+            await fetch(`${API_BASE}/handshake`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({user: myPKHex})
+            });
+        } catch (e) {}
+    }
+
+    function connectWS() {
+        ws = new WebSocket(WS_URL);
+        ws.onmessage = (event) => displayMessage(JSON.parse(event.data));
+        ws.onclose = () => setTimeout(connectWS, 3000);
+    }
+
+    function displayMessage(m) {
+        const win = document.getElementById('chat-window');
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'message';
+        msgDiv.innerHTML = `
+            <div class="meta">[${m.timestamp}] ${m.from} <span style="font-size:0.5rem; opacity:0.3;">${m.publicKey.substring(0,8)}...</span></div>
+            <div class="text">${m.text}</div>
+            ${m.wireData ? `<div style="font-size: 0.6rem; color: #444; margin-top:5px; font-family: monospace;">WIRE: ${m.wireData}</div>` : ''}
+        `;
+        win.appendChild(msgDiv);
+        win.scrollTop = win.scrollHeight;
+    }
+
+    async function fetchMessages() {
+        try {
+            const res = await fetch(`${API_BASE}/messages/get`);
+            const msgs = await res.json();
+            document.getElementById('chat-window').innerHTML = '';
+            msgs.forEach(displayMessage);
+        } catch (e) {}
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('msg-input');
+        const text = input.value;
+        if (!text) return;
+        input.value = '';
+        await fetch(`${API_BASE}/messages/send`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({user: myPKHex, text: text})
+        });
+    }
+
+    document.getElementById('msg-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    setInterval(updateStatus, 15000);
+</script>
+
+</body>
+</html>

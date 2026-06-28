@@ -1,0 +1,24 @@
+# Binarios y ejecutables compilados
+backend/main
+backend/messenger-backend
+backend/messenger-exe
+backend/messenger-final
+backend/server_final_v2
+backend/server_v2
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+main
+
+# Archivos de registro y logs
+*.log
+backend/*.log
+
+# Datos persistentes locales (opcional, si no deseas subir los datos locales)
+backend/quantum_data.json
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
