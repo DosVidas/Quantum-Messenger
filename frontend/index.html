@@ -795,12 +795,20 @@
 
     async function performHandshake() {
         try {
-            await fetch(`${API_BASE}/handshake`, {
+            console.log("[CRYPTO] Iniciando handshake con el nodo...");
+            const res = await fetch(`${API_BASE}/handshake`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({user: myPKHex})
             });
-        } catch (e) {}
+            if (!res.ok) {
+                console.error("[CRYPTO] Handshake falló en el nodo. Status:", res.status);
+            } else {
+                console.log("[CRYPTO] Canal seguro (Kyber) establecido con éxito.");
+            }
+        } catch (e) {
+            console.error("[CRYPTO] Error de red al intentar el handshake:", e);
+        }
     }
 
     function connectWS() {
