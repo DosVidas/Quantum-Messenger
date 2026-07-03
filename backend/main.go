@@ -37,6 +37,7 @@ type ChatMessage struct {
 	ID        int    `json:"id"`
 	From      string `json:"from"` // Alias
 	PublicKey string `json:"publicKey"`
+	To        string `json:"to,omitempty"` // Destinatario para DMs privados
 	Text      string `json:"text"`
 	Timestamp string `json:"timestamp"`
 	IsSystem  bool   `json:"isSystem"`
@@ -77,16 +78,18 @@ func (s *Store) save() {
 }
 
 type MessengerServer struct {
-	c2Server     *c2.C2Server
-	store        *Store
-	userSecrets  map[string][]byte
-	serverKeys   *crypto.Keys33LR
-	seed         string
-	clients      map[*websocket.Conn]bool
-	broadcast    chan ChatMessage
-	challenges   map[string]string
-	detector     *ai.AnomalyDetector
-	mu           sync.RWMutex
+	c2Server        *c2.C2Server
+	store           *Store
+	userSecrets     map[string][]byte
+	serverKeys      *crypto.Keys33LR
+	seed            string
+	clients         map[*websocket.Conn]string // Conn -> PublicKey
+	activeUsers     map[string]*websocket.Conn // PublicKey -> Conn
+	privateMessages map[string][]ChatMessage   // Historial de DMs en memoria
+	broadcast       chan ChatMessage
+	challenges      map[string]string
+	detector        *ai.AnomalyDetector
+	mu              sync.RWMutex
 }
 
 func NewMessengerServer(seed string) *MessengerServer {
@@ -95,15 +98,17 @@ func NewMessengerServer(seed string) *MessengerServer {
 		log.Fatalf("[CORE] Failed to generate Kyber keys: %v", err)
 	}
 	s := &MessengerServer{
-		c2Server:    c2.NewC2Server(keys.PrivateKey),
-		store:       NewStore(),
-		userSecrets: make(map[string][]byte),
-		serverKeys:  keys,
-		seed:        seed,
-		clients:     make(map[*websocket.Conn]bool),
-		broadcast:   make(chan ChatMessage, 100),
-		challenges:  make(map[string]string),
-		detector:    ai.NewAnomalyDetector(),
+		c2Server:        c2.NewC2Server(keys.PrivateKey),
+		store:           NewStore(),
+		userSecrets:     make(map[string][]byte),
+		serverKeys:      keys,
+		seed:            seed,
+		clients:         make(map[*websocket.Conn]string),
+		activeUsers:     make(map[string]*websocket.Conn),
+		privateMessages: make(map[string][]ChatMessage),
+		broadcast:       make(chan ChatMessage, 100),
+		challenges:      make(map[string]string),
+		detector:        ai.NewAnomalyDetector(),
 	}
 	go s.run()
 	return s
@@ -112,20 +117,67 @@ func NewMessengerServer(seed string) *MessengerServer {
 func (s *MessengerServer) run() {
 	for msg := range s.broadcast {
 		s.mu.RLock()
-		for client := range s.clients {
-			err := client.WriteJSON(msg)
-			if err != nil {
-				log.Printf("[WS] Broadcast error: %v", err)
-				client.Close()
-				s.mu.RUnlock()
-				s.mu.Lock()
-				delete(s.clients, client)
-				s.mu.Unlock()
-				s.mu.RLock()
+		if msg.To != "" {
+			s.sendToUser(msg.PublicKey, msg)
+			if msg.PublicKey != msg.To {
+				s.sendToUser(msg.To, msg)
+			}
+		} else {
+			for client := range s.clients {
+				err := client.WriteJSON(msg)
+				if err != nil {
+					log.Printf("[WS] Broadcast error: %v", err)
+					client.Close()
+				}
 			}
 		}
 		s.mu.RUnlock()
 	}
+}
+
+func (s *MessengerServer) sendToUser(publicKey string, msg ChatMessage) {
+	conn, ok := s.activeUsers[publicKey]
+	if ok {
+		err := conn.WriteJSON(msg)
+		if err != nil {
+			log.Printf("[WS] Send error to %s: %v", publicKey, err)
+			conn.Close()
+		}
+	}
+}
+
+func (s *MessengerServer) broadcastPresence() {
+	s.mu.RLock()
+	activeKeys := make(map[string]bool)
+	for _, pk := range s.clients {
+		activeKeys[pk] = true
+	}
+	s.mu.RUnlock()
+
+	s.store.mu.RLock()
+	onlineList := []User{}
+	for pk := range activeKeys {
+		user, exists := s.store.Users[pk]
+		if exists {
+			onlineList = append(onlineList, user)
+		} else {
+			onlineList = append(onlineList, User{PublicKey: pk, Alias: "Nodo_" + safeTruncate(pk, 6)})
+		}
+	}
+	s.store.mu.RUnlock()
+
+	jsonBytes, err := json.Marshal(onlineList)
+	if err != nil {
+		return
+	}
+
+	msg := ChatMessage{
+		From:     "SYSTEM",
+		Text:     "[PRESENCE_UPDATE]" + string(jsonBytes),
+		IsSystem: true,
+	}
+
+	s.broadcast <- msg
 }
 
 func (s *MessengerServer) jsonResponse(w http.ResponseWriter, data interface{}, status int) {
@@ -155,19 +207,32 @@ func (s *MessengerServer) handleWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer ws.Close()
 
+	publicKey := r.URL.Query().Get("publicKey")
+	if publicKey == "" {
+		log.Println("[WS] Client rejected: missing publicKey")
+		ws.WriteJSON(ChatMessage{Text: "Rechazado: publicKey requerida", IsSystem: true})
+		return
+	}
+
 	s.mu.Lock()
-	s.clients[ws] = true
+	s.clients[ws] = publicKey
+	s.activeUsers[publicKey] = ws
 	s.mu.Unlock()
 
-	log.Println("[WS] New client connected")
+	log.Printf("[WS] New client connected: %s...", safeTruncate(publicKey, 10))
+	s.broadcastPresence()
 
 	for {
 		_, _, err := ws.ReadMessage()
 		if err != nil {
 			s.mu.Lock()
-			delete(s.clients, ws)
+			if pk, exists := s.clients[ws]; exists {
+				delete(s.activeUsers, pk)
+				delete(s.clients, ws)
+			}
 			s.mu.Unlock()
-			log.Println("[WS] Client disconnected")
+			log.Printf("[WS] Client disconnected: %s...", safeTruncate(publicKey, 10))
+			s.broadcastPresence()
 			break
 		}
 	}
@@ -322,10 +387,18 @@ func (s *MessengerServer) handleGetPK(w http.ResponseWriter, r *http.Request) {
 	s.jsonResponse(w, map[string][]byte{"pubkey": s.serverKeys.PublicKey}, http.StatusOK)
 }
 
+func getPrivateChatKey(u1, u2 string) string {
+	if u1 < u2 {
+		return u1 + "_" + u2
+	}
+	return u2 + "_" + u1
+}
+
 func (s *MessengerServer) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		User string `json:"user"`
 		Text string `json:"text"`
+		To   string `json:"to,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -369,17 +442,28 @@ func (s *MessengerServer) handleSendMessage(w http.ResponseWriter, r *http.Reque
 	}
 
 	msg := ChatMessage{
-		ID:        len(s.store.Messages) + 1,
 		From:      alias,
 		PublicKey: req.User,
+		To:        req.To,
 		Text:      decryptedText,
 		Timestamp: time.Now().Format("15:04:05"),
 		WireData:  wireHex[:32] + "...",
 	}
 
-	s.store.Messages = append(s.store.Messages, msg)
-	s.store.mu.Unlock()
-	s.store.save()
+	if req.To != "" {
+		chatKey := getPrivateChatKey(req.User, req.To)
+		s.store.mu.Unlock()
+
+		s.mu.Lock()
+		msg.ID = len(s.privateMessages[chatKey]) + 1
+		s.privateMessages[chatKey] = append(s.privateMessages[chatKey], msg)
+		s.mu.Unlock()
+	} else {
+		msg.ID = len(s.store.Messages) + 1
+		s.store.Messages = append(s.store.Messages, msg)
+		s.store.mu.Unlock()
+		s.store.save()
+	}
 
 	s.broadcast <- msg
 	s.jsonResponse(w, msg, http.StatusAccepted)
@@ -389,6 +473,23 @@ func (s *MessengerServer) handleGetMessages(w http.ResponseWriter, r *http.Reque
 	s.store.mu.RLock()
 	defer s.store.mu.RUnlock()
 	s.jsonResponse(w, s.store.Messages, http.StatusOK)
+}
+
+func (s *MessengerServer) handleGetPrivateMessages(w http.ResponseWriter, r *http.Request) {
+	u1 := r.URL.Query().Get("user1")
+	u2 := r.URL.Query().Get("user2")
+	if u1 == "" || u2 == "" {
+		http.Error(w, "Missing user1 or user2 query parameters", http.StatusBadRequest)
+		return
+	}
+	chatKey := getPrivateChatKey(u1, u2)
+	s.mu.RLock()
+	msgs, ok := s.privateMessages[chatKey]
+	s.mu.RUnlock()
+	if !ok {
+		msgs = []ChatMessage{}
+	}
+	s.jsonResponse(w, msgs, http.StatusOK)
 }
 
 func (s *MessengerServer) handleUpload(w http.ResponseWriter, r *http.Request) {
@@ -475,6 +576,7 @@ func main() {
 
 	mux.HandleFunc("/api/messages/send", server.cors(server.handleSendMessage))
 	mux.HandleFunc("/api/messages/get", server.cors(server.handleGetMessages))
+	mux.HandleFunc("/api/messages/private", server.cors(server.handleGetPrivateMessages))
 	mux.HandleFunc("/api/upload", server.cors(server.handleUpload))
 	mux.HandleFunc("/files/", server.cors(server.handleServeFile))
 

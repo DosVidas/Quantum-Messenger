@@ -956,7 +956,126 @@
             #upload-progress { width: 100%; }
             .msg-row { max-width: 92%; }
         }
-    </style>}
+
+        /* === CONTACTOS ONLINE & PESTAÑAS (TABS) === */
+        .online-list {
+            scrollbar-width: thin;
+        }
+        .online-user-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 1px solid transparent;
+            margin-bottom: 2px;
+        }
+        .online-user-item:hover {
+            background: rgba(0,255,156,0.06);
+            border-color: rgba(0,255,156,0.15);
+        }
+        .online-user-item.active {
+            background: rgba(0,255,156,0.12);
+            border-color: var(--primary);
+        }
+        .online-user-item .ou-avatar {
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--accent2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            color: #000;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        .online-user-item .ou-info {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .online-user-item .ou-name {
+            font-size: 0.75rem;
+            color: var(--text);
+            font-weight: 600;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .online-user-item .ou-pk {
+            font-size: 0.55rem;
+            color: var(--text-dim);
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .online-user-item .ou-status-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--primary);
+            box-shadow: 0 0 6px var(--primary);
+            flex-shrink: 0;
+        }
+        .chat-tabs {
+            display: flex;
+            background: rgba(0,0,0,0.4);
+            border-bottom: 1px solid var(--border);
+            padding: 4px 12px 0;
+            gap: 4px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .chat-tabs::-webkit-scrollbar { display: none; }
+        .chat-tab {
+            padding: 6px 12px;
+            background: rgba(13,13,22,0.8);
+            border: 1px solid var(--border);
+            border-bottom: none;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+            white-space: nowrap;
+            max-width: 140px;
+        }
+        .chat-tab .tab-close {
+            font-size: 10px;
+            color: var(--text-dim);
+            cursor: pointer;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 2px;
+        }
+        .chat-tab .tab-close:hover {
+            background: rgba(255,46,136,0.2);
+            color: var(--accent);
+        }
+        .chat-tab.active {
+            background: var(--panel-solid);
+            color: var(--primary);
+            border-color: var(--primary);
+            border-bottom: 1px solid var(--panel-solid);
+            margin-bottom: -1px;
+            font-weight: bold;
+        }
+        .chat-tab.unread {
+            color: var(--accent2);
+            border-color: var(--accent2);
+            font-weight: bold;
+            box-shadow: 0 -2px 6px rgba(0,212,255,0.2);
+        }
     </style>
 </head>
 <body>
@@ -1037,6 +1156,14 @@
 
             <!-- SECCIONES DE INFORMACIÓN DEL NODO -->
             <div class="sidebar-sections">
+                <!-- NODOS CONECTADOS -->
+                <div class="status-box" style="display: flex; flex-direction: column; max-height: 220px; overflow: hidden;">
+                    <h3>Nodos Conectados</h3>
+                    <div id="online-users-list" class="online-list" style="overflow-y: auto; display: flex; flex-direction: column; gap: 4px; flex: 1; margin-top: 4px;">
+                        <div style="color: var(--text-dim); font-size: 0.72rem;">Buscando nodos...</div>
+                    </div>
+                </div>
+
                 <div class="status-box">
                     <h3>Estado del Nodo</h3>
                     <div id="status-info" class="val-text">Iniciando...</div>
@@ -1075,6 +1202,13 @@
                 </div>
                 <div class="ch-actions">
                     <button class="chat-action-btn" onclick="sendNudge()" title="Enviar zumbido a la sala">🔔 Zumbido</button>
+                </div>
+            </div>
+
+            <!-- PESTAÑAS DE CONVERSACIÓN -->
+            <div class="chat-tabs" id="chat-tabs">
+                <div class="chat-tab active" id="tab-general" onclick="switchChatTab('general')">
+                    <span>💬 Canal General</span>
                 </div>
             </div>
 
@@ -1150,6 +1284,14 @@
     let myStatus = localStorage.getItem('33lr_demo_status') || 'online';
     let myPersonalMessage = localStorage.getItem('33lr_demo_pm') || 'Quantum Messenger E2EE';
     let audioCtx = null;
+
+    // --- ESTADO Y HISTORIAL DE CHATS (GENERAL + DMs) ---
+    let activeChatTarget = 'general';
+    let chatHistories = {
+        'general': []
+    };
+    let openDMs = {};
+    let dmPeerInfo = {};
 
     const STATUS_LABELS = {
         online: 'En línea',
@@ -1537,9 +1679,186 @@
     }
 
     function connectWS() {
-        ws = new WebSocket(WS_URL);
-        ws.onmessage = (event) => displayMessage(JSON.parse(event.data));
+        ws = new WebSocket(WS_URL + "?publicKey=" + myPKHex);
+        ws.onmessage = (event) => handleWSMessage(JSON.parse(event.data));
         ws.onclose = () => setTimeout(connectWS, 3000);
+    }
+
+    function handleWSMessage(msg) {
+        if (msg.isSystem && msg.text && msg.text.startsWith('[PRESENCE_UPDATE]')) {
+            const jsonStr = msg.text.substring('[PRESENCE_UPDATE]'.length);
+            try {
+                const list = JSON.parse(jsonStr);
+                updateOnlineUsersList(list);
+            } catch (e) { console.error("Error al parsear presencia:", e); }
+            return;
+        }
+
+        let chatKey = 'general';
+        if (msg.to) {
+            chatKey = (msg.publicKey === myPKHex) ? msg.to : msg.publicKey;
+            
+            if (!chatHistories[chatKey]) {
+                chatHistories[chatKey] = [];
+            }
+            if (!dmPeerInfo[chatKey]) {
+                dmPeerInfo[chatKey] = { alias: msg.from };
+            }
+            if (!openDMs[chatKey]) {
+                openDMTab(chatKey, msg.from);
+            }
+        }
+
+        if (!chatHistories[chatKey]) chatHistories[chatKey] = [];
+        if (!chatHistories[chatKey].some(m => m.id === msg.id && m.publicKey === msg.publicKey && m.timestamp === msg.timestamp)) {
+            chatHistories[chatKey].push(msg);
+        }
+
+        if (chatKey === activeChatTarget) {
+            displayMessage(msg);
+        } else {
+            markTabUnread(chatKey);
+        }
+    }
+
+    function updateOnlineUsersList(list) {
+        const listDiv = document.getElementById('online-users-list');
+        if (!listDiv) return;
+        listDiv.innerHTML = '';
+        
+        const filtered = list.filter(u => u.publicKey !== myPKHex);
+        
+        if (filtered.length === 0) {
+            listDiv.innerHTML = '<div style="color: var(--text-dim); font-size: 0.72rem; padding: 4px;">No hay otros nodos conectados.</div>';
+            return;
+        }
+
+        filtered.forEach(u => {
+            const item = document.createElement('div');
+            item.className = 'online-user-item';
+            if (activeChatTarget === u.publicKey) item.classList.add('active');
+            
+            const avatarChar = (u.alias || '?').charAt(0).toUpperCase();
+            
+            item.innerHTML = `
+                <div class="ou-avatar">${avatarChar}</div>
+                <div class="ou-info">
+                    <div class="ou-name">${escapeHtml(u.alias)}</div>
+                    <div class="ou-pk">${escapeHtml(u.publicKey.substring(0,10))}...</div>
+                </div>
+                <div class="ou-status-dot"></div>
+            `;
+            item.onclick = () => {
+                openDMTab(u.publicKey, u.alias);
+                switchChatTab(u.publicKey);
+            };
+            listDiv.appendChild(item);
+        });
+    }
+
+    function openDMTab(peerPK, peerAlias) {
+        if (openDMs[peerPK]) return;
+        openDMs[peerPK] = true;
+        dmPeerInfo[peerPK] = { alias: peerAlias };
+
+        const tabsDiv = document.getElementById('chat-tabs');
+        if (!tabsDiv) return;
+
+        const tab = document.createElement('div');
+        tab.className = 'chat-tab';
+        tab.id = `tab-${peerPK}`;
+        tab.onclick = () => switchChatTab(peerPK);
+        
+        tab.innerHTML = `
+            <span>👤 ${escapeHtml(peerAlias)}</span>
+            <span class="tab-close" onclick="closeDMTab('${peerPK}', event)">✕</span>
+        `;
+        tabsDiv.appendChild(tab);
+    }
+
+    function closeDMTab(peerPK, ev) {
+        ev && ev.stopPropagation();
+        delete openDMs[peerPK];
+        const tabEl = document.getElementById(`tab-${peerPK}`);
+        if (tabEl) tabEl.remove();
+
+        if (activeChatTarget === peerPK) {
+            switchChatTab('general');
+        }
+    }
+
+    function switchChatTab(target) {
+        activeChatTarget = target;
+        
+        document.querySelectorAll('.chat-tab').forEach(t => t.classList.remove('active', 'unread'));
+        
+        let tabEl;
+        if (target === 'general') {
+            tabEl = document.getElementById('tab-general');
+            
+            document.getElementById('peer-avatar').style.backgroundImage = '';
+            document.getElementById('peer-avatar').innerText = 'Q';
+            document.getElementById('peer-name').innerText = 'SALA NODO GENERAL';
+            document.getElementById('peer-status').innerText = '● En línea · 33LR tunnel active';
+        } else {
+            tabEl = document.getElementById(`tab-${target}`);
+            const alias = dmPeerInfo[target]?.alias || 'Desconocido';
+            
+            document.getElementById('peer-avatar').style.backgroundImage = '';
+            document.getElementById('peer-avatar').innerText = alias.charAt(0).toUpperCase();
+            document.getElementById('peer-name').innerText = `DM con ${alias}`;
+            document.getElementById('peer-status').innerText = '● En línea · Chat Directo Privado (E2EE)';
+        }
+
+        if (tabEl) {
+            tabEl.classList.add('active');
+        }
+
+        document.querySelectorAll('.online-user-item').forEach(item => {
+            const pkDiv = item.querySelector('.ou-pk');
+            if (pkDiv && pkDiv.innerText.startsWith(target.substring(0,10))) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+        
+        reloadChatWindow();
+    }
+
+    function markTabUnread(chatKey) {
+        const tabEl = document.getElementById(`tab-${chatKey}`);
+        if (tabEl && !tabEl.classList.contains('active')) {
+            tabEl.classList.add('unread');
+        }
+    }
+
+    function reloadChatWindow() {
+        const win = document.getElementById('chat-window');
+        if (!win) return;
+        win.innerHTML = '';
+        
+        const history = chatHistories[activeChatTarget] || [];
+        
+        if (activeChatTarget !== 'general' && history.length === 0) {
+            fetchPrivateMessages(activeChatTarget);
+            return;
+        }
+
+        history.forEach(m => {
+            displayMessageDirect(m);
+        });
+    }
+
+    async function fetchPrivateMessages(peerPK) {
+        try {
+            const res = await fetch(`${API_BASE}/messages/private?user1=${myPKHex}&user2=${peerPK}`);
+            const msgs = await res.json();
+            chatHistories[peerPK] = msgs;
+            if (activeChatTarget === peerPK) {
+                reloadChatWindow();
+            }
+        } catch(e) { console.error("Error al obtener historial DM:", e); }
     }
 
     // --- FORMATO DE MENSAJES DE ARCHIVO ---
@@ -1595,6 +1914,24 @@
     }
 
     function displayMessage(m) {
+        const text = (m.text != null) ? String(m.text) : '';
+        const isSelf = m.from === myAlias;
+        
+        if (text === '[NUDGE]') {
+            playTic('nudge');
+            const frame = document.getElementById('window-frame');
+            if (frame) {
+                frame.classList.add('nudge');
+                setTimeout(() => frame.classList.remove('nudge'), 600);
+            }
+        } else {
+            playTic(isSelf ? 'outgoing' : 'incoming');
+        }
+
+        displayMessageDirect(m);
+    }
+
+    function displayMessageDirect(m) {
         const win = document.getElementById('chat-window');
         if (!win) return;
         
@@ -1603,12 +1940,6 @@
 
         // Caso 1: Zumbido (Nudge)
         if (text === '[NUDGE]') {
-            playTic('nudge');
-            const frame = document.getElementById('window-frame');
-            if (frame) {
-                frame.classList.add('nudge');
-                setTimeout(() => frame.classList.remove('nudge'), 600);
-            }
             const banner = document.createElement('div');
             banner.className = 'nudge-banner';
             banner.innerText = isSelf ? "Has enviado un zumbido." : `${escapeHtml(m.from)} te ha enviado un zumbido.`;
@@ -1618,8 +1949,6 @@
         }
 
         // Caso 2: Mensaje normal o de archivo
-        playTic(isSelf ? 'outgoing' : 'incoming');
-
         const row = document.createElement('div');
         row.className = 'msg-row' + (isSelf ? ' self' : '');
 
@@ -1713,8 +2042,10 @@
         try {
             const res = await fetch(`${API_BASE}/messages/get`);
             const msgs = await res.json();
-            document.getElementById('chat-window').innerHTML = '';
-            msgs.forEach(displayMessage);
+            chatHistories['general'] = msgs;
+            if (activeChatTarget === 'general') {
+                reloadChatWindow();
+            }
         } catch (e) {}
     }
 
@@ -1724,19 +2055,31 @@
         if (!text) return;
         input.value = '';
         closeEmojiPicker();
+        
+        const payload = { user: myPKHex, text: text };
+        if (activeChatTarget !== 'general') {
+            payload.to = activeChatTarget;
+        }
+
         await fetch(`${API_BASE}/messages/send`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({user: myPKHex, text: text})
+            body: JSON.stringify(payload)
         });
     }
 
     async function sendNudge() {
         closeEmojiPicker();
+        
+        const payload = { user: myPKHex, text: "[NUDGE]" };
+        if (activeChatTarget !== 'general') {
+            payload.to = activeChatTarget;
+        }
+
         await fetch(`${API_BASE}/messages/send`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({user: myPKHex, text: "[NUDGE]"})
+            body: JSON.stringify(payload)
         });
     }
 
@@ -2035,10 +2378,15 @@
             };
             const text = `[FILE]${JSON.stringify(payload)}[/FILE]`;
 
+            const postData = { user: myPKHex, text: text };
+            if (activeChatTarget !== 'general') {
+                postData.to = activeChatTarget;
+            }
+
             const r = await fetch(`${API_BASE}/messages/send`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ user: myPKHex, text: text })
+                body: JSON.stringify(postData)
             });
             if (!r.ok) throw new Error('No se pudo enviar el mensaje');
 
