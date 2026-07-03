@@ -1157,7 +1157,7 @@
             <!-- SECCIONES DE INFORMACIÓN DEL NODO -->
             <div class="sidebar-sections">
                 <!-- NODOS CONECTADOS -->
-                <div class="status-box" style="display: flex; flex-direction: column; max-height: 220px; overflow: hidden;">
+                <div class="status-box" style="min-height: 140px; display: flex; flex-direction: column; flex-shrink: 0;">
                     <h3>Nodos Conectados</h3>
                     <div id="online-users-list" class="online-list" style="overflow-y: auto; display: flex; flex-direction: column; gap: 4px; flex: 1; margin-top: 4px;">
                         <div style="color: var(--text-dim); font-size: 0.72rem;">Buscando nodos...</div>
@@ -1680,6 +1680,14 @@
 
     function connectWS() {
         ws = new WebSocket(WS_URL + "?publicKey=" + myPKHex);
+        ws.onopen = () => {
+            console.log("[WS] Conectado al nodo. Sincronizando chats...");
+            if (activeChatTarget === 'general') {
+                fetchMessages();
+            } else {
+                fetchPrivateMessages(activeChatTarget);
+            }
+        };
         ws.onmessage = (event) => handleWSMessage(JSON.parse(event.data));
         ws.onclose = () => setTimeout(connectWS, 3000);
     }
