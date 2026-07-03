@@ -254,6 +254,8 @@
             flex-direction: column;
             min-height: 0;
             z-index: 100;
+            overflow-y: auto;
+            max-height: 100vh;
         }
         .sb-header {
             padding: 14px;
@@ -1050,7 +1052,6 @@
                     <h3>Acciones del Chat</h3>
                     <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
                         <button class="chat-action-btn" onclick="clearLocalChat()" style="width:100%; justify-content:center; padding: 4px 6px;">🗑️ Limpiar Pantalla</button>
-                        <button class="chat-action-btn" onclick="exportChatLog()" style="width:100%; justify-content:center; padding: 4px 6px;">💾 Exportar Log</button>
                     </div>
                 </div>
             </div>
@@ -1334,25 +1335,6 @@
             document.getElementById('chat-window').innerHTML = '';
             toast("Pantalla del chat limpiada");
         }
-    }
-
-    function exportChatLog() {
-        const win = document.getElementById('chat-window');
-        if (!win) return;
-        const lines = [];
-        win.querySelectorAll('.msg-row').forEach(row => {
-            const time = row.querySelector('.msg-meta')?.innerText || '';
-            const bubble = row.querySelector('.msg-bubble');
-            const text = bubble ? (bubble.querySelector('.msg-text')?.innerText || bubble.innerText) : '';
-            lines.push(`${time}: ${text}`);
-        });
-        if (lines.length === 0) return alert("El chat está vacío.");
-        const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `chat-log-${new Date().toISOString().substring(0,10)}.txt`;
-        a.click();
-        toast("💾 Log del chat exportado");
     }
 
     // --- CRIPTOGRAFÍA ECDSA (P-256) ---
