@@ -645,33 +645,36 @@
         /* === TARJETAS DE ARCHIVO === */
         .file-card {
             border: 1px solid var(--border);
-            background: rgba(0,0,0,0.5);
-            padding: 10px 12px;
-            margin-top: 6px;
+            background: rgba(0,0,0,0.4);
+            padding: 8px 10px;
+            margin-top: 4px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-size: 0.8rem;
-            border-radius: 8px;
+            gap: 8px;
+            font-size: 0.78rem;
+            border-radius: 6px;
+            max-width: 320px;
         }
-        .file-card .file-icon { font-size: 1.6rem; line-height: 1; }
+        .file-card .file-icon { font-size: 1.4rem; line-height: 1; flex-shrink: 0; }
         .file-card .file-info { flex: 1; min-width: 0; }
-        .file-card .file-name { color: var(--primary); word-break: break-all; font-size: 0.82rem; }
-        .file-card .file-meta { color: var(--text-dim); font-size: 0.68rem; margin-top: 2px; }
-        .file-card .file-lock { color: var(--primary); font-size: 0.62rem; opacity: 0.7; margin-top: 2px; }
+        .file-card .file-name { color: var(--primary); font-size: 0.8rem; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+        .file-card .file-meta { color: var(--text-dim); font-size: 0.65rem; margin-top: 1px; }
+        .file-card .file-lock { color: var(--primary); font-size: 0.6rem; opacity: 0.6; margin-top: 1px; }
         .file-download-btn {
-            background: rgba(0,255,156,0.1);
+            background: rgba(0,255,156,0.08);
             color: var(--primary);
             border: 1px solid var(--primary);
-            padding: 6px 12px;
+            padding: 4px 10px;
             cursor: pointer;
             text-transform: uppercase;
             font-weight: bold;
             font-family: inherit;
-            font-size: 0.68rem;
-            white-space: nowrap;
-            flex-shrink: 0;
+            font-size: 0.7rem;
             border-radius: 4px;
+            transition: all 0.15s;
+            width: auto !important;
+            margin-bottom: 0 !important;
+            flex-shrink: 0;
         }
         .file-download-btn:hover { background: var(--primary); color: #000; }
         .file-download-btn:disabled { opacity: 0.5; cursor: wait; }
